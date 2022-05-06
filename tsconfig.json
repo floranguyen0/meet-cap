@@ -1,0 +1,26 @@
+{   
+    "compilerOptions": {
+        "lib": ["es2020"],
+        "preserveConstEnums": true,
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "target": "es2021",
+        "types": ["node"],
+        "module": "commonjs",
+        // "module": "es2022",
+        "strict": true,
+        "esModuleInterop": true,
+        "outDir": "dist",
+        "resolveJsonModule": true,
+    },
+    "include": [
+        "./scripts",
+        "./test",
+        "./typechain-types",
+        "./contract_arguments"
+, "multisig/transfer-ownership.ts", "multi-ownership-address-creation.ts"    ],
+    "files": [
+        "./hardhat.config.ts"
+    ]
+}
+
