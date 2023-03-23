@@ -9,13 +9,13 @@ contract TokenVestingSchedule is Ownable {
     using SafeMathX for uint256;
 
     // Beneficiary
-    address private immutable _beneficiary;
+    address private immutable _BENEFICIARY;
 
     // Token address
-    IERC20Upgradeable private immutable _token;
+    IERC20Upgradeable private immutable _TOKEN;
 
     // Total amount of locked tokens
-    uint256 private immutable _totalAllocation;
+    uint256 private immutable _TOTALALLOCATION;
 
     // Total amount of tokens have been released
     uint256 private _releasedAmount;
@@ -33,9 +33,9 @@ contract TokenVestingSchedule is Ownable {
     uint64[] private _releaseDates;
 
     // Start date of the lockup period
-    uint64 private immutable _startTime;
+    uint64 private immutable _STARTTIME;
 
-    event Released(uint256 releasableAmount, uint32 toIdx);
+    event Released(uint256 indexed releasableAmount, uint32 indexed toIdx);
 
     constructor(
         address beneficiary_,
@@ -45,7 +45,10 @@ contract TokenVestingSchedule is Ownable {
         uint32[] memory releasePercents_,
         uint64 startTime_
     ) {
-        require(lockDurations_.length == releasePercents_.length, "Unlock length does not match");
+        require(
+            lockDurations_.length == releasePercents_.length,
+            "Unlock length does not match"
+        );
 
         uint256 _sum;
         for (uint256 i = 0; i < releasePercents_.length; ++i) {
@@ -54,33 +57,40 @@ contract TokenVestingSchedule is Ownable {
 
         require(_sum == 100, "Total unlock percent is not equal to 100");
 
-        require(beneficiary_ != address(0), "Beneficiary address cannot be the zero address");
+        require(
+            beneficiary_ != address(0),
+            "Beneficiary address cannot be the zero address"
+        );
 
-        require(address(token_) != address(0), "Token address cannot be the zero address");
+        require(
+            address(token_) != address(0),
+            "Token address cannot be the zero address"
+        );
 
-        require(totalAllocation_ > 0, "The total allocation must be greater than zero");
+        require(
+            totalAllocation_ > 0,
+            "The total allocation must be greater than zero"
+        );
 
-        _beneficiary = beneficiary_;
-        _token = token_;
-        _startTime = startTime_;
+        _BENEFICIARY = beneficiary_;
+        _TOKEN = token_;
+        _STARTTIME = startTime_;
         _lockDurations = lockDurations_;
         _releasePercents = releasePercents_;
-        _totalAllocation = totalAllocation_;
-        _releasedAmount = 0;
-        _releaseId = 0;
+        _TOTALALLOCATION = totalAllocation_;
         _releaseDates = new uint64[](_lockDurations.length);
     }
 
     function beneficiary() public view virtual returns (address) {
-        return _beneficiary;
+        return _BENEFICIARY;
     }
 
     function token() public view virtual returns (IERC20Upgradeable) {
-        return _token;
+        return _TOKEN;
     }
 
     function totalAllocation() public view virtual returns (uint256) {
-        return _totalAllocation;
+        return _TOTALALLOCATION;
     }
 
     function releasedAmount() public view virtual returns (uint256) {
@@ -104,7 +114,7 @@ contract TokenVestingSchedule is Ownable {
     }
 
     function startTime() public view virtual returns (uint64) {
-        return _startTime;
+        return _STARTTIME;
     }
 
     /// @notice Release unlocked tokens to user.
@@ -118,12 +128,15 @@ contract TokenVestingSchedule is Ownable {
         uint256 releasableAmount = _releasableAmount(phases);
 
         _releasedAmount += releasableAmount;
-        _token.transfer(_beneficiary, releasableAmount);
+        _TOKEN.transfer(_BENEFICIARY, releasableAmount);
 
         uint64 releaseDate = uint64(block.timestamp);
 
-        for (uint256 i = preReleaseId; i < _releaseId; ++i) {
+        for (uint256 i = preReleaseId; i < _releaseId; ) {
             _releaseDates[i] = releaseDate;
+            unchecked {
+                ++i;
+            }
         }
 
         emit Released(releasableAmount, _releaseId);
@@ -136,8 +149,7 @@ contract TokenVestingSchedule is Ownable {
     /// The owner can get the token back by calling this function.
     /// The ownership is renounced right after the setup is done safely.
     function safeSetup() public virtual onlyOwner returns (bool) {
-        uint256 balance = _token.balanceOf(address(this));
-        _token.transfer(owner(), balance);
+        _TOKEN.transfer(owner(), _TOKEN.balanceOf(address(this)));
 
         return true;
     }
@@ -145,22 +157,31 @@ contract TokenVestingSchedule is Ownable {
     function _preValidateRelease(uint256 phases) internal view virtual {
         require(_releaseId < phases, "All phases have already been released");
         require(
-            block.timestamp >= _startTime + _lockDurations[_releaseId] * 1 seconds,
+            block.timestamp >=
+                _STARTTIME + _lockDurations[_releaseId] * 1 seconds,
             "Current time is before release time"
         );
     }
 
-    function _releasableAmount(uint256 phases) internal virtual returns (uint256) {
+    function _releasableAmount(
+        uint256 phases
+    ) internal virtual returns (uint256) {
         uint256 releasableAmount;
-        while (_releaseId < phases && block.timestamp >= _startTime + _lockDurations[_releaseId] * 1 seconds) {
+        while (
+            _releaseId < phases &&
+            block.timestamp >=
+            _STARTTIME + _lockDurations[_releaseId] * 1 seconds
+        ) {
             uint256 stepReleaseAmount;
             if (_releaseId == phases - 1) {
-                releasableAmount = _totalAllocation - _releasedAmount;
+                releasableAmount = _TOTALALLOCATION - _releasedAmount;
             } else {
-                stepReleaseAmount = _totalAllocation.RoundDown(_releasePercents[_releaseId]);
+                stepReleaseAmount = _TOTALALLOCATION.RoundDown(
+                    _releasePercents[_releaseId]
+                );
                 releasableAmount += stepReleaseAmount;
             }
-            _releaseId++;
+            ++_releaseId;
         }
         return releasableAmount;
     }
