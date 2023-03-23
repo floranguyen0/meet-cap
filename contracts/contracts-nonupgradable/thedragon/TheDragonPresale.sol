@@ -10,28 +10,31 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract TheDragonPresale is Context, ReentrancyGuard, Ownable {
     // How many token units a buyer gets per wei.
     // The rate is the conversion between wei and the smallest and indivisible token unit.
-    uint256 private _rate;
+    uint256 private immutable _RATE;
 
     //  The amount of wei raised
     uint256 private _weiRaised;
 
     //  The token being sold
-    IERC20Upgradeable private _token;
+    IERC20Upgradeable private immutable _TOKEN;
 
     event TokensPurchased(
         address indexed purchaser,
         address indexed beneficiary,
         uint256 weiSent,
-        uint256 tokensBought
+        uint256 indexed tokensBought
     );
 
     constructor(uint256 rate_, IERC20Upgradeable token_) {
         require(rate_ > 0, "The token rate cannot be 0");
 
-        require(address(token_) != address(0), "Token address cannot be the zero address");
+        require(
+            address(token_) != address(0),
+            "Token address cannot be the zero address"
+        );
 
-        _rate = rate_;
-        _token = token_;
+        _RATE = rate_;
+        _TOKEN = token_;
     }
 
     receive() external payable {
@@ -39,7 +42,7 @@ contract TheDragonPresale is Context, ReentrancyGuard, Ownable {
     }
 
     function rate() public view virtual returns (uint256) {
-        return _rate;
+        return _RATE;
     }
 
     function weiRaised() public view virtual returns (uint256) {
@@ -47,25 +50,29 @@ contract TheDragonPresale is Context, ReentrancyGuard, Ownable {
     }
 
     function token() public view virtual returns (IERC20Upgradeable) {
-        return _token;
+        return _TOKEN;
     }
 
-    function buyTokens(address beneficiary) public payable virtual nonReentrant returns (bool) {
+    function buyTokens(
+        address beneficiary
+    ) public payable virtual nonReentrant returns (bool) {
         uint256 weiSent = msg.value;
-        uint256 tokensBought = weiSent * _rate;
+        uint256 tokensBought = weiSent * _RATE;
 
         _preValidatePurchase(beneficiary, weiSent, tokensBought);
 
         _weiRaised = _weiRaised + weiSent;
 
-        _token.transfer(beneficiary, tokensBought);
+        _TOKEN.transfer(beneficiary, tokensBought);
 
         emit TokensPurchased(_msgSender(), beneficiary, weiSent, tokensBought);
 
         return true;
     }
 
-    function forwardFunds(uint256 weiAmount) public virtual onlyOwner returns (bool) {
+    function forwardFunds(
+        uint256 weiAmount
+    ) public virtual onlyOwner returns (bool) {
         require(address(this).balance >= weiAmount, "Insufficient balance");
 
         _transferEth(payable(owner()), weiAmount);
@@ -74,10 +81,10 @@ contract TheDragonPresale is Context, ReentrancyGuard, Ownable {
     }
 
     function endPresale() public virtual onlyOwner returns (bool) {
-        uint256 tokenBalance = _token.balanceOf(address(this));
+        uint256 tokenBalance = _TOKEN.balanceOf(address(this));
         uint256 weiBalance = address(this).balance;
 
-        _token.transfer(owner(), tokenBalance);
+        _TOKEN.transfer(owner(), tokenBalance);
         _transferEth(payable(owner()), weiBalance);
 
         return true;
@@ -88,13 +95,24 @@ contract TheDragonPresale is Context, ReentrancyGuard, Ownable {
         uint256 weiSent,
         uint256 tokensBought
     ) private view {
-        require(beneficiary != address(0), "Beneficiary address cannot be the zero address.");
+        require(
+            beneficiary != address(0),
+            "Beneficiary address cannot be the zero address."
+        );
         require(weiSent != 0, "You cannot buy with 0 MATIC.");
-        require(_token.balanceOf(address(this)) >= tokensBought, "Token amount exceeds the presale balance.");
+        require(
+            _TOKEN.balanceOf(address(this)) >= tokensBought,
+            "Token amount exceeds the presale balance."
+        );
     }
 
-    function _transferEth(address payable beneficiary, uint256 weiAmount) private nonReentrant {
-        (bool success, bytes memory data) = beneficiary.call{value: weiAmount}("");
+    function _transferEth(
+        address payable beneficiary,
+        uint256 weiAmount
+    ) private nonReentrant {
+        (bool success, bytes memory data) = beneficiary.call{value: weiAmount}(
+            ""
+        );
 
         require(success, "Failed to send Ether");
     }
