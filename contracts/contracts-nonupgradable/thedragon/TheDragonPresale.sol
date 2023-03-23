@@ -56,16 +56,20 @@ contract TheDragonPresale is Context, ReentrancyGuard, Ownable {
     function buyTokens(
         address beneficiary
     ) public payable virtual nonReentrant returns (bool) {
-        uint256 weiSent = msg.value;
-        uint256 tokensBought = weiSent * _RATE;
+        uint256 tokensBought = msg.value * _RATE;
 
-        _preValidatePurchase(beneficiary, weiSent, tokensBought);
+        _preValidatePurchase(beneficiary, msg.value, tokensBought);
 
-        _weiRaised = _weiRaised + weiSent;
+        _weiRaised += msg.value;
 
         _TOKEN.transfer(beneficiary, tokensBought);
 
-        emit TokensPurchased(_msgSender(), beneficiary, weiSent, tokensBought);
+        emit TokensPurchased(
+            _msgSender(),
+            beneficiary,
+            msg.value,
+            tokensBought
+        );
 
         return true;
     }
@@ -81,11 +85,8 @@ contract TheDragonPresale is Context, ReentrancyGuard, Ownable {
     }
 
     function endPresale() public virtual onlyOwner returns (bool) {
-        uint256 tokenBalance = _TOKEN.balanceOf(address(this));
-        uint256 weiBalance = address(this).balance;
-
-        _TOKEN.transfer(owner(), tokenBalance);
-        _transferEth(payable(owner()), weiBalance);
+        _TOKEN.transfer(owner(), _TOKEN.balanceOf(address(this)));
+        _transferEth(payable(owner()), address(this).balance);
 
         return true;
     }
@@ -114,6 +115,6 @@ contract TheDragonPresale is Context, ReentrancyGuard, Ownable {
             ""
         );
 
-        require(success, "Failed to send Ether");
+        require(success, string(data));
     }
 }
